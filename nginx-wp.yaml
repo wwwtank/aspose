@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wordpress
+  namespace: tank
+type: Opaque
+data:
+  passwordwp: MTIzMTIzMTIz
+--- 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginxcm
+  namespace: tank
+data:
+  default.conf: |-
+    server {
+      listen 80;
+      server_name it-tank.ru;
+      server_tokens off;
+
+      access_log  /var/log/nginx/host.access.log  main;
+      root /var/www/html/;
+      index index.php;
+
+      location / {
+         try_files $uri /index.php$is_args$args;
+      }
+
+      location ~ \.php$ {
+          try_files $uri =404;
+          fastcgi_split_path_info ^(.+\.php)(/.+)$;
+          fastcgi_pass localhost:9000;
+          fastcgi_index index.php;
+          include fastcgi_params;
+          fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param PATH_INFO $fastcgi_path_info;
+        }
+    }
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+   app: nginx
+  name: nginx
+  namespace: tank
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+status:
+  loadBalancer: {}
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  namespace: tank
+  labels:
+    app: wordpress
+spec:
+  ports:
+  - protocol: TCP
+    port: 9000
+    targetPort: 9000
+  selector:
+    app: wordpress
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: tank
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx:1.15.12-alpine
+        name: nginx
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-cm
+          mountPath: /etc/nginx/conf.d
+        - name: wpstorage
+          mountPath: /var/www/html
+      - image: wordpress:5.1.1-fpm-alpine
+        name: wordpress
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 250m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 128Mi
+        env:
+#       - name: WORDPRESS_DB_HOST
+#        value: wordpresspg:5432
+#       - name: WORDPRESS_DB_USER
+#         value: wordpress
+#       - name: WORDPRESS_DB_NAME
+#          value: wordpress
+#        - name: WORDPRESS_DB_PASSWORD
+#          valueFrom:
+#            secretKeyRef:
+#              name: pgcred
+#              key: passwordwp
+        - name:  MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        - name: MYSQL_DATABASE
+          value: wordpress
+        - name: MYSQL_HOST
+          value: mysql
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: wpstorage
+          mountPath: /var/www/html
+      volumes:
+      - name: wpstorage
+        emptyDir: {}
+      - name: nginx-cm
+        configMap:
+          name: nginxcm

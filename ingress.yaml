@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1  
+kind: Ingress
+metadata:  
+  name: nginx
+  namespace: tank
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.org/ssl-services: "nginx"
+  labels:
+    app: nginx
+spec:  
+  tls:
+   - hosts:
+     - it-tank.ru
+     secretName: tls-certificate
+  rules:
+  - host: it-tank.ru
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+             name: nginx
+             port:
+                 number: 80
+---

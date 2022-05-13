@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tank
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pgcred
+  namespace: tank
+type: Opaque
+data:
+  password: cm9vdHJvb3Q=  
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpresspg
+  namespace: tank
+  labels:
+    app: wordpresspg
+spec:
+  ports:
+  - port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    app: wordpresspg
+  type: ClusterIP
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pg-pv-volume
+  namespace: tank
+  labels:
+    type: local
+    app: wordpresspg
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pg-pv-claim
+  namespace: tank
+  labels:
+    app: wordpresspg
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpresspg
+  namespace: tank
+  labels:
+    app: wordpresspg
+spec:
+  selector:
+    matchLabels:
+      app: wordpresspg    
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpresspg
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:latest
+        env:
+        - name: POSTGRES_DB
+          value: postgres
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pgcred
+              key: password
+        ports:
+        - containerPort: 5432
+          name:  wordpresspg
+        volumeMounts:
+        - name: pg-persistent-storage
+          mountPath: /var/lib/postgres
+      volumes:
+      - name: pg-persistent-storage
+        persistentVolumeClaim:
+          claimName: pg-pv-claim
