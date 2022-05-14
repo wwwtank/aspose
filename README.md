@@ -23,7 +23,7 @@ kubectl cluster-info
 minikube addons enable ingress 
 ```
 
-###2) Generate certs manually
+### 2) Generate certs manually
 ```
 $ sudo apt install -yq certbot
 $ sudo certbot certonly --standalone -d it-tank.ru
