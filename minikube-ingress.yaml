@@ -5,14 +5,15 @@ metadata:
   namespace: tank
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    nginx.org/ssl-services: "nginx"
+    certmanager.k8s.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
   labels:
     app: nginx
 spec:  
   tls:
    - hosts:
      - it-tank.ru
-     secretName: tls-certificate
+     secretName: ingress-tls
   rules:
   - host: it-tank.ru
     http:
@@ -22,6 +23,6 @@ spec:
         backend:
           service:
              name: nginx
-             port:
-                 number: 80
+             port: 
+                number: 443
 ---

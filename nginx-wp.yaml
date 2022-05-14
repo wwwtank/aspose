@@ -15,13 +15,15 @@ metadata:
 data:
   default.conf: |-
     server {
-      listen 80;
+      listen 443 ssl;
       server_name it-tank.ru;
       server_tokens off;
 
       access_log  /var/log/nginx/host.access.log  main;
       root /var/www/html/;
       index index.php;
+      ssl_certificate /etc/nginx/ssl/tls.crt;
+      ssl_certificate_key /etc/nginx/ssl/tls.key; 
 
       location / {
          try_files $uri /index.php$is_args$args;
@@ -42,17 +44,18 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   labels:
-   app: nginx
+    app: nginx
   name: nginx
   namespace: tank
 spec:
   selector:
     app: nginx
   ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
+  - port: 443
+    targetPort: 443
+    protocol: TCP
   type: ClusterIP
 status:
   loadBalancer: {}
@@ -92,7 +95,7 @@ spec:
         app: nginx
     spec:
       containers:
-      - image: nginx:1.15.12-alpine
+      - image: nginx:latest
         name: nginx
         imagePullPolicy: Always
         resources:
@@ -103,13 +106,16 @@ spec:
             cpu: 500m
             memory: 512Mi
         ports:
-        - containerPort: 80
+        - containerPort: 443
+          name: nginx
         volumeMounts:
         - name: nginx-cm
           mountPath: /etc/nginx/conf.d
+        - name: secret-volume
+          mountPath: /etc/nginx/ssl          
         - name: wpstorage
           mountPath: /var/www/html
-      - image: wordpress:5.1.1-fpm-alpine
+      - image: wordpress:latest
         name: wordpress
         imagePullPolicy: Always
         resources:
@@ -120,22 +126,24 @@ spec:
             cpu: 500m
             memory: 128Mi
         env:
-#       - name: WORDPRESS_DB_HOST
-#        value: wordpresspg:5432
-#       - name: WORDPRESS_DB_USER
-#         value: wordpress
-#       - name: WORDPRESS_DB_NAME
-#          value: wordpress
-#        - name: WORDPRESS_DB_PASSWORD
-#          valueFrom:
-#            secretKeyRef:
-#              name: pgcred
-#              key: passwordwp
+        - name: DB_HOST
+          value: wordpresspg
+        - name: DB_USER
+          value: root
+        - name: DB_NAME
+          value: wordpress
+        - name: DB_PASSWORD
+          valueFrom:
+           secretKeyRef:
+             name: pgcred
+             key: password
         - name:  MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
               name: mysql-pass
               key: password
+        - name: MYSQL_ROOT_USER
+          value: wordpress
         - name: MYSQL_DATABASE
           value: wordpress
         - name: MYSQL_HOST
@@ -151,3 +159,6 @@ spec:
       - name: nginx-cm
         configMap:
           name: nginxcm
+      - name: secret-volume
+        secret:
+           secretName: ingress-tls
