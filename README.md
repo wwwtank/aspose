@@ -1,26 +1,17 @@
 # Kubernetes NGINX+ Wordpress + Postgres + Persistent Volumes
-Remarks: 
-- There are two implementations: Minikube on Windows10 and Microk8s on Ubuntu 20.04
-- Starting with MYSQL, wordpress is needed to change the internal MYSQL requests  to POSTGRESS ones by plugin.
+Remarks:  Starting with MySQL, Wordpress is needed to change the internal MySQL requests  to Postgres ones by the special plug-in.
 
 ## Installation:
-### 1) Install K8s cluster  
-Microk8s
+### 1) Install K8s cluster  Minikube based on VirtualBox
 ```
-$ sudo snap install microk8s --classic
-$ sudo usermod -a -G microk8s $USER
-$ sudo chown -f -R $USER ~/.kube
-$ microk8s status --wait-ready
-$ microk8s enable dashboard dns ingress
-```
-OR  Minikube 
-```
-msiexec minikube-installer.exe
-msiexec kubectl.exe
-minikube start --memory=4096 --vm-driver=virtualbox
-minikube status
-kubectl cluster-info
-minikube addons enable ingress 
+$ sudo apt install virtualbox
+$ sudo curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64  && chmod +x minikube
+$ sudo mkdir -p /usr/local/bin/
+$ sudo install minikube /usr/local/bin/
+$ minikube start --vm-driver=virtualbox
+$ minikube status
+$ kubectl cluster-info
+$ minikube addons enable ingress 
 ```
 
 ### 2) Generate certs manually
@@ -34,6 +25,7 @@ $ sudo cp /etc/letsencrypt/live/it-tank.ru/privkey.pem /home/tank/aspose/certs/t
 ### 3)  Create k8s secret for certs located in ./certs
 ```
 $ cd ~/tank
+$ kubectl create ns tank
 $ kubectl create secret tls ingress-tls --key ./certs/tls-key.key --cert ./certs/tls-cert.crt -n tank
 $ kubectl label secret ingress-tls app=nginx -n tank
 ```
@@ -43,28 +35,28 @@ $ kubectl label secret ingress-tls app=nginx -n tank
 kubectl apply -f postgres.yaml 
 kubectl apply -f mysql.yaml 
 kubectl apply -f nginx-wp.yaml
-kubectl apply -f minikube-ingress.yaml 
+kubectl apply -f ingress.yaml 
 ```
 
-### 5) Correct an identification plugin for DB  'root' account 
+### 5) Check DB and correct an identification plugin for 'root' account 
 ```
 $ kubectl exec -it -n tank MYSQL_POD_NAME sh
-# mysql -p
+mysql -p
 mysql> ALTER USER root IDENTIFIED WITH mysql_native_password BY 'rootroot';
 ```
-OR check Postgress
+and check Postgress
 ```
 $ kubectl exec -it -n tank POSTGRESS_POD_NAME sh
-# su postgres
+su postgres
 $ psql
 \l
 \q
 ```
 
-### 6) Access https://it-tank.ru
+### 6) Open https://it-tank.ru
 Demo Wordpress Credentials:
 - username: admin
-- password: 123123123
+- password: password
 
 ## Changing DB
 
