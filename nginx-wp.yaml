@@ -117,28 +117,17 @@ spec:
             cpu: 500m
             memory: 128Mi
         env:
-        - name: DB_HOST
+        - name: WORDPRESS_DB_HOST
           value: wordpresspg
-        - name: DB_USER
-          value: root
-        - name: DB_NAME
-          value: wordpress
-        - name: DB_PASSWORD
+        - name: WORDPRESS_DB_USER
+          value: adminwp
+        - name: WORDPRESS_DB_NAME
+          value: wp
+        - name: WORDPRESS_DB_PASSWORD
           valueFrom:
            secretKeyRef:
              name: pgcred
-             key: password
-        - name:  MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-pass
-              key: password
-        - name: MYSQL_ROOT_USER
-          value: wordpress
-        - name: MYSQL_DATABASE
-          value: wordpress
-        - name: MYSQL_HOST
-          value: mysql
+             key: adminpass
         ports:
         - containerPort: 9000
         volumeMounts:

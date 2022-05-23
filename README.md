@@ -1,5 +1,5 @@
 # Kubernetes NGINX+ Wordpress + Postgres + Persistent Volumes
-Remarks:  Starting with MySQL, Wordpress is needed to change the internal MySQL requests  to Postgres ones by the special plug-in.
+Remarks:  Wordpress is needed to change the internal MySQL requests  to Postgres ones by the special plug-in. This action performs manualy in appropriate containers.
 
 ## Installation:
 ### 1) Install K8s cluster  Minikube based on VirtualBox
@@ -33,37 +33,44 @@ $ kubectl label secret ingress-tls app=nginx -n tank
 ### 4) Create Resources (Services, Ingress, Deployments ...)
 ```
 kubectl apply -f postgres.yaml 
-kubectl apply -f mysql.yaml 
 kubectl apply -f nginx-wp.yaml
 kubectl apply -f ingress.yaml 
 ```
 
-### 5) Check DB and correct an identification plugin for 'root' account 
-```
-$ kubectl exec -it -n tank MYSQL_POD_NAME sh
-mysql -p
-mysql> ALTER USER root IDENTIFIED WITH mysql_native_password BY 'rootroot';
-```
-and check Postgress
+### 5) Check DB and make plugin action on BD
 ```
 $ kubectl exec -it -n tank POSTGRESS_POD_NAME sh
-su postgres
-$ psql
-\l
-\q
+ su - postgres
+ psql
+ create database wp;
+ create user adminwp with password '123123';
+ grant all privileges on database wp to adminwp;
+ q 
 ```
 
-### 6) Open https://it-tank.ru
+### 6) Install plug-in on Wordpress
+```
+$ kubectl exec -it -n tank WORDPRESS_POD_NAME sh
+ cd wp-content
+ apt-get update 
+ apt-get install -y git
+ git clone https://github.com/kevinoid/postgresql-for-wordpress.git
+ mv postgresql-for-wordpress/pg4wp Pg4wp
+ cp Pg4wp/db.php db.php
+
+//check
+ grep DB_DRIVER db.php
+//this will return the following
+//define('DB_DRIVER', 'pgsql'); 
+```
+
+### 7) Open https://it-tank.ru
 Demo Wordpress Credentials:
-- username: admin
-- password: password
-
-## Changing DB
-
+- username: adminwp
+- password: 123123
 
 ## Deletion
 ```
 $ kubectl -n tank delete svc,pv,pvc,deployments,pods,secrets,ingress --all  
 $ kubectl delete ns tank
 ```
-

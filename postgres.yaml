@@ -12,7 +12,9 @@ metadata:
 type: Opaque
 data:
   password: cm9vdHJvb3Q=  
+  adminpass: MTIzMTIz
 ---
+
 
 apiVersion: v1
 kind: Service
